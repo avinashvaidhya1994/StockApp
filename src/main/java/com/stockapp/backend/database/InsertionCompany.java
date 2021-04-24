@@ -18,7 +18,8 @@ public class InsertionCompany {
 	public static void main(String[] args) throws IOException {
 		
 		String sql_select = "INSERT INTO company (symbol,companyName) VALUES (?, ?)";
-		String csvFilePath = "D:\\MS_UCM\\AdvancedDB\\ProjectAdb\\Data\\symbol.csv";
+//		String csvFilePath = "D:\\MS_UCM\\AdvancedDB\\ProjectAdb\\Data\\symbol.csv";
+		String csvFilePath = "G:\\Project 1\\Detail Spec\\Data_updated\\symbol.csv";
 		int batchSize = 20;
 		 
 		

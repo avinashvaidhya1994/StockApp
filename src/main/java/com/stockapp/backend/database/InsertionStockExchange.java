@@ -10,8 +10,9 @@ public class InsertionStockExchange {
 	public static void main(String[] args) throws IOException {
 		
 		String sql_select = "INSERT INTO exchange (symbol,exchange,companyName) VALUES (?, ?,?)";
-		String csvFilePath = "D:\\MS_UCM\\AdvancedDB\\ProjectAdb\\Data\\exchange.csv";
-		int batchSize = 20;
+//		String csvFilePath = "D:\\MS_UCM\\AdvancedDB\\ProjectAdb\\Data\\exchange.csv";
+		String csvFilePath = "G:\\Project 1\\Detail Spec\\Data_updated\\exchange.csv";
+		int batchSize = 200;
 		
 		try(Connection conn = DBConnection.createNewDBconnection()){
 			
@@ -22,7 +23,7 @@ public class InsertionStockExchange {
             String lineText = null;
             int count = 0;
             lineReader.readLine(); // skip header line
-            
+            int batchNumber = 0;
             while ((lineText = lineReader.readLine()) != null) {
                 String[] data = lineText.split(",");
                 String symbol = data[0];
@@ -32,9 +33,13 @@ public class InsertionStockExchange {
                 statement.setString(2, exchange);
                 statement.setString(3, companyName);
                 statement.addBatch();
-                
-                if (count % batchSize == 0) {
+                count++;
+                if (count == batchSize ) {
+                	count = 0;
+                	batchNumber++;
+                	System.out.println("batch number  : "+ batchNumber);
                     statement.executeBatch();
+                    statement.clearBatch();
                 }
             }
  

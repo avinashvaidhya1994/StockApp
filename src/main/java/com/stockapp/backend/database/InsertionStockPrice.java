@@ -19,12 +19,18 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 public class InsertionStockPrice {
 	public static void main(String[] args) throws IOException, ParseException {
 		
-		 File file = new File("D:\\MS_UCM\\AdvancedDB\\ProjectAdb\\Data\\history");
+//		 File file = new File("D:\\MS_UCM\\AdvancedDB\\ProjectAdb\\Data\\history");
+		 File file = new File("G:\\Project 1\\Detail Spec\\Data_updated\\history");
 	        File[] files = file.listFiles();
+	        int fileCount = 0;
 	        for(File f: files){
+	        	if(fileCount > 11) {
+	        		break;
+	        	}
 	            String fileNameWithOutExt = FilenameUtils.removeExtension(f.getName());
 	            System.out.println(f);
 	            InsertionToData(f.getPath(),fileNameWithOutExt);
+	            fileCount++;
 	        }
 		
 		
@@ -32,7 +38,7 @@ public class InsertionStockPrice {
 
 	private static void InsertionToData(String csvFilePath,String inputSymbol) throws FileNotFoundException, IOException, NumberFormatException, ParseException {
 		String sql_select = "INSERT INTO price (symbol,volume,price,openPrice,lowPrice,highPrice,tradeDate) VALUES (?, ?,?,?, ?,?,?)";
-		int batchSize = 20;
+		int batchSize = 2000;
 		
 		try(Connection conn = DBConnection.createNewDBconnection()){
 			
@@ -43,13 +49,14 @@ public class InsertionStockPrice {
             String lineText = null;
             int count = 0;
             lineReader.readLine(); // skip header line
+            lineReader.readLine(); // skip next line
             int iteration = 0;
-            
+            int batchNumber = 0;
             while ((lineText = lineReader.readLine()) != null) {
-            	if(iteration == 0) {
-                    iteration++;  
-                    continue;
-                }
+//            	if(iteration == 0) {
+//                    iteration++;  
+//                    continue;
+//                }
                 String[] data = lineText.split(",");
                 Long volume = Long.parseLong(data[2]);
                 Float price = Float.valueOf(data[1]);
@@ -66,13 +73,20 @@ public class InsertionStockPrice {
                 statement.setFloat(6, high);
                 statement.setDate(7,sqlDate );
                 statement.addBatch();
-                if (count % batchSize == 0) {
+                count++;
+                
+                if (count == batchSize) {
+                	count = 0;
+                	batchNumber++;
+                	System.out.println("Batch number : " +batchNumber);
                     statement.executeBatch();
+                    statement.clearBatch();
                 }
             }
  
             lineReader.close();
             statement.executeBatch();
+            statement.clearBatch();
             //conn.commit();
             conn.close();
 		    

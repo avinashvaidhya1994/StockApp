@@ -20,21 +20,21 @@ public class CreateTablesAndSchema {
 	
 	private static void createSchemaAndTables(Connection connection) {
 		try {
-			connection.prepareStatement("DROP SCHEMA if exists abc1").execute();
-			PreparedStatement statement = connection.prepareStatement("CREATE DATABASE abc1"); 
+			connection.prepareStatement("DROP SCHEMA if exists adb1").execute();
+			PreparedStatement statement = connection.prepareStatement("CREATE DATABASE adb1"); 
 			statement.execute();
-			connection.setSchema("abc1");
-			String createCompany = "CREATE TABLE abc1.company ("+ 
+			connection.setSchema("adb1");
+			String createCompany = "CREATE TABLE adb1.company ("+ 
 					"					symbol varchar(25),"+ 
 					"					companyName varchar(150)," + 
 					"					Constraint PK Primary Key(symbol)"+ 
 					"					)";
-			String createExchange = "CREATE TABLE abc1.exchange (" + 
+			String createExchange = "CREATE TABLE adb1.exchange (" + 
 					"    companyName varchar(150)," + 
 					"    symbol varchar(25)," + 
 					"exchange varchar(50)" + 
 					")";
-			String createPrice = "CREATE TABLE abc1.price (" + 
+			String createPrice = "CREATE TABLE adb1.price (" + 
 					"    symbol varchar(25)," + 
 					"    volume int," + 
 					"    price float," + 
@@ -43,7 +43,7 @@ public class CreateTablesAndSchema {
 					"    highPrice float," + 
 					"    tradeDate date" + 
 					")";
-			String createTimeframe = "CREATE TABLE abc1.timeframe (" + 
+			String createTimeframe = "CREATE TABLE adb1.timeframe (" + 
 					"    symbol varchar(25)," + 
 					"    startDate date," + 
 					"    endDate date" + 

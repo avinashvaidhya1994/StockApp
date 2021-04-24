@@ -23,13 +23,19 @@ import com.stockapp.backend.entity.TimeFrame;
 public class InsertionStockTimeFrame {
 	public static void main(String[] args) throws IOException, ParseException {
 		
-		 File file = new File("D:\\MS_UCM\\AdvancedDB\\ProjectAdb\\Data\\history");
+//		 File file = new File("D:\\MS_UCM\\AdvancedDB\\ProjectAdb\\Data\\history");
+		File file = new File("G:\\Project 1\\Detail Spec\\Data_updated\\history");
 	        File[] files = file.listFiles();
+	        int fileCount = 0;
 	        for(File f: files){
+	        	if(fileCount > 11) {
+	        		break;
+	        	}
 	            String fileNameWithOutExt = FilenameUtils.removeExtension(f.getName());
 	            System.out.println(f);
 	            List<TimeFrame> timeFrameList = reteriveFromPrice(fileNameWithOutExt);
 	           insertionToData(timeFrameList);
+	           fileCount++;
 	        }
 		
 		
@@ -71,7 +77,7 @@ public class InsertionStockTimeFrame {
 						statement.setString(1, timeFrame.getSymbol());
 						statement.setDate(2,timeFrame.getStartDate());
 						statement.setDate(3,timeFrame.getEndDate());
-
+						statement.addBatch();
 					} catch (SQLException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -80,7 +86,7 @@ public class InsertionStockTimeFrame {
 				}
 				);
 			}
-			statement.addBatch();
+			
 			statement.executeBatch();
             conn.close(); 
 		} catch (SQLException e) {
