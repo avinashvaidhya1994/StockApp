@@ -1,10 +1,12 @@
 package com.stockapp.backend.service;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -114,8 +116,13 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 			ResultSet rs2 = priceSelectStatement.executeQuery();
 			int index = 0;
 			List<Price> priceList = new ArrayList<>();
+//			Date prevDate = null;
 			while(rs2.next() && index < pastDaysCount) {
 				index++;
+//				Date tradeDate = rs2.getDate("tradeDate");
+//				if(prevDate != null && tradeDate.equals(prevDate))
+//					continue;
+//				prevDate = tradeDate;
 				Price price = new Price();
 				price.setCompanyName(companyName);
 				price.setSymbol(symbol);
@@ -132,6 +139,150 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 			e.printStackTrace();
 		}
 		return resultMap;
+	}
+
+	@Override
+	public Map<String, Object> getQuarterResultForSymbol(String symbol) {
+		Map<String, Object> resultMap = new HashMap<>();
+		String exchangeSelect = "Select * from exchange where symbol = ?";
+		String priceSelect = "Select * from price where symbol = ? order by tradeDate desc";
+		try {
+			PreparedStatement exchangeSelectStatement = coreComponent.getConnection().prepareStatement(exchangeSelect);
+			exchangeSelectStatement.setString(1, symbol);
+			ResultSet rs = exchangeSelectStatement.executeQuery();
+			if(!rs.next()) {
+				resultMap.put("error", "Symbol: " + symbol + " , not found ");
+				return resultMap;
+			}
+			String companyName = rs.getString("companyName");
+			PreparedStatement priceSelectStatement = coreComponent.getConnection().prepareStatement(priceSelect);
+			priceSelectStatement.setString(1, symbol);
+			ResultSet rs2 = priceSelectStatement.executeQuery();
+			int index = 0;
+			List<Price> priceList = new ArrayList<>();
+			Date prevDate = null;
+			int prevYear = 0;
+			while(rs2.next()) {
+				index++;
+				Date tradeDate = rs2.getDate("tradeDate");
+				int month = tradeDate.toLocalDate().getMonthValue();
+				int year = tradeDate.toLocalDate().getYear();
+				if(prevDate != null && tradeDate.equals(prevDate)) 
+					continue;
+				prevDate = tradeDate;
+				if((index > 31 && month % 3 == 0 ) || (prevYear!= 0 && year != prevYear))
+					break;
+				prevYear = year;
+				Price price = new Price();
+				price.setCompanyName(companyName);
+				price.setSymbol(symbol);
+				price.setOpenPrice(rs2.getFloat("openPrice"));
+				price.setClosePrice(rs2.getFloat("price"));
+				price.setHighPrice(rs2.getFloat("highPrice"));
+				price.setLowPrice(rs2.getFloat("lowPrice"));
+				price.setVolume(rs2.getInt("volume"));
+				price.setTradeDate(tradeDate);
+				priceList.add(price);
+			}
+			if(priceList.isEmpty()) {
+				resultMap.put("error", "No data found for Symbol : " + symbol);
+				return resultMap;
+			}
+			priceList.sort(Comparator.comparing(Price::getTradeDate));
+			resultMap.put("currentQuarterDetail", priceList);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return resultMap;
+	}
+
+	@Override
+	public Map<String, Object> getComparisonForSymbols(String symbol1, String symbol2) {
+		Map<String, Object> resultMap = new HashMap<>();
+		String company1Name = getCompanyName(symbol1);
+		if(company1Name.equals("error")) {
+			resultMap.put(company1Name, "Symbol : " + symbol1 + " Not found");
+			return resultMap;
+		}
+		String company2Name = getCompanyName(symbol2);
+		if(company2Name.equals("error")) {
+			resultMap.put(company2Name, "Symbol : " + symbol2 + " Not found");
+			return resultMap;
+		}
+		List<Price> symbol1PriceList = getPriceDetails(symbol1,company1Name);
+		if(symbol1PriceList.isEmpty()) {
+			resultMap.put("error", "No data found for Symbol : " + symbol1);
+			return resultMap;
+		}
+		List<Price> symbol2PriceList = getPriceDetails(symbol2,company2Name);
+		if(symbol2PriceList.isEmpty()) {
+			resultMap.put("error", "No data found for Symbol : " + symbol2);
+			return resultMap;
+		}
+		resultMap.put("symbol1", symbol1PriceList);
+		resultMap.put("symbol2", symbol2PriceList);
+		return resultMap;
+	}
+	
+	private String getCompanyName(String symbol) {
+		String exchangeSelect = "Select * from exchange where symbol = ?";
+		PreparedStatement exchangeSelectStatement;
+		String companyName = "";
+		try {
+			exchangeSelectStatement = coreComponent.getConnection().prepareStatement(exchangeSelect);
+			exchangeSelectStatement.setString(1, symbol);
+			ResultSet rs = exchangeSelectStatement.executeQuery();
+			if(!rs.next()) {
+				return "error";
+			}
+			 companyName = rs.getString("companyName");
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return companyName;
+	}
+	
+	private List<Price> getPriceDetails(String symbol,String companyName){
+		String priceSelect = "Select * from price where symbol = ? order by tradeDate asc";
+		List<Price> priceList = new ArrayList<>();
+		try {
+			PreparedStatement priceSelectStatement = coreComponent.getConnection().prepareStatement(priceSelect);
+			priceSelectStatement.setString(1, symbol);
+			ResultSet rs2 = priceSelectStatement.executeQuery();
+			int index = 0;
+			float firstPrice = 0f;
+			float percentage = 0f;
+			Date prevDate = null;
+			while(rs2.next()) {
+				Date tradeDate = rs2.getDate("tradeDate");
+				if(prevDate != null && tradeDate.equals(prevDate)) 
+					continue;
+				prevDate = tradeDate;
+				if(index < 1) {
+					firstPrice = rs2.getFloat("price");
+					percentage = 0f;
+				}else {
+					percentage = (( rs2.getFloat("price") - firstPrice)/firstPrice) * 100;
+				}
+				index++;
+				Price price = new Price();
+				price.setCompanyName(companyName);
+				price.setSymbol(symbol);
+				price.setOpenPrice(rs2.getFloat("openPrice"));
+				price.setClosePrice(rs2.getFloat("price"));
+				price.setHighPrice(rs2.getFloat("highPrice"));
+				price.setLowPrice(rs2.getFloat("lowPrice"));
+				price.setVolume(rs2.getInt("volume"));
+				price.setTradeDate(rs2.getDate("tradeDate"));
+				price.setPercentageChangeFromFirst(percentage);
+				priceList.add(price);
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return priceList;
+		
 	}
 		
 }

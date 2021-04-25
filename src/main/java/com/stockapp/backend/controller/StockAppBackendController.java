@@ -41,4 +41,17 @@ public class StockAppBackendController {
 		return ResponseEntity.status(HttpStatus.OK).body(resultMap);
 	}
 	
+	@GetMapping(value = "/getCurrentQuarterDetail/{symbol}")
+	ResponseEntity<Map> getCurrentQuarterDetail(@PathVariable(name = "symbol",required = true) String symbol){
+		Map<String,Object> resultMap = stockAppBackendService.getQuarterResultForSymbol(symbol);
+		return ResponseEntity.status(HttpStatus.OK).body(resultMap);
+	}
+	
+	@GetMapping(value = "/getComparisonDetail/{symbol1}/{symbol2}")
+	ResponseEntity<Map> getComparisonDetail(@PathVariable(name = "symbol1",required = true) String symbol1,
+			@PathVariable(name = "symbol2",required = true) String symbol2){
+		Map<String,Object> resultMap = stockAppBackendService.getComparisonForSymbols(symbol1,symbol2);
+		return ResponseEntity.status(HttpStatus.OK).body(resultMap);
+	}
+	
 }

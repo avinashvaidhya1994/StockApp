@@ -19,6 +19,8 @@ public class Price {
 	private float lowPrice;
 	
 	private Date tradeDate;
+	
+	private float percentageChangeFromFirst;
 
 	public String getSymbol() {
 		return symbol;
@@ -83,5 +85,12 @@ public class Price {
 	public void setTradeDate(Date tradeDate) {
 		this.tradeDate = tradeDate;
 	}
-	
+
+	public float getPercentageChangeFromFirst() {
+		return percentageChangeFromFirst;
+	}
+
+	public void setPercentageChangeFromFirst(float percentageChangeFromFirst) {
+		this.percentageChangeFromFirst = percentageChangeFromFirst;
+	}
 }
