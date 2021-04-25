@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.stockapp.backend.entity.Price;
+import com.stockapp.backend.entity.StockMovingAverage;
 import com.stockapp.backend.entity.Summary;
 
 @Service
@@ -116,13 +118,15 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 			ResultSet rs2 = priceSelectStatement.executeQuery();
 			int index = 0;
 			List<Price> priceList = new ArrayList<>();
-//			Date prevDate = null;
+			Date prevDate = null;
 			while(rs2.next() && index < pastDaysCount) {
 				index++;
-//				Date tradeDate = rs2.getDate("tradeDate");
-//				if(prevDate != null && tradeDate.equals(prevDate))
-//					continue;
-//				prevDate = tradeDate;
+				Date tradeDate = rs2.getDate("tradeDate");
+				if(prevDate != null && tradeDate.equals(prevDate)) {
+					resultMap.put("error", "There are multiple price records for the date: " + String.valueOf(prevDate) + ", please check the data");
+					return resultMap;
+				}
+				prevDate = tradeDate;
 				Price price = new Price();
 				price.setCompanyName(companyName);
 				price.setSymbol(symbol);
@@ -167,8 +171,10 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 				Date tradeDate = rs2.getDate("tradeDate");
 				int month = tradeDate.toLocalDate().getMonthValue();
 				int year = tradeDate.toLocalDate().getYear();
-				if(prevDate != null && tradeDate.equals(prevDate)) 
-					continue;
+				if(prevDate != null && tradeDate.equals(prevDate)) {
+					resultMap.put("error", "There are multiple price records for the date: " + String.valueOf(prevDate) + ", please check the data");
+					return resultMap;
+				}					
 				prevDate = tradeDate;
 				if((index > 31 && month % 3 == 0 ) || (prevYear!= 0 && year != prevYear))
 					break;
@@ -209,12 +215,14 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 			resultMap.put(company2Name, "Symbol : " + symbol2 + " Not found");
 			return resultMap;
 		}
-		List<Price> symbol1PriceList = getPriceDetails(symbol1,company1Name);
+		List<Price> symbol1PriceList = getPriceDetails(resultMap,symbol1,company1Name);
+		if(resultMap.get("error") != null)
+			return resultMap;
 		if(symbol1PriceList.isEmpty()) {
 			resultMap.put("error", "No data found for Symbol : " + symbol1);
 			return resultMap;
 		}
-		List<Price> symbol2PriceList = getPriceDetails(symbol2,company2Name);
+		List<Price> symbol2PriceList = getPriceDetails(resultMap, symbol2,company2Name);
 		if(symbol2PriceList.isEmpty()) {
 			resultMap.put("error", "No data found for Symbol : " + symbol2);
 			return resultMap;
@@ -242,7 +250,7 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 		return companyName;
 	}
 	
-	private List<Price> getPriceDetails(String symbol,String companyName){
+	private List<Price> getPriceDetails(Map<String, Object> resultMap, String symbol,String companyName){
 		String priceSelect = "Select * from price where symbol = ? order by tradeDate asc";
 		List<Price> priceList = new ArrayList<>();
 		try {
@@ -255,8 +263,12 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 			Date prevDate = null;
 			while(rs2.next()) {
 				Date tradeDate = rs2.getDate("tradeDate");
-				if(prevDate != null && tradeDate.equals(prevDate)) 
-					continue;
+				if(prevDate != null && tradeDate.equals(prevDate)) {
+					String message = "For symbol : " + symbol +"there are multiple price records for the date: " + String.valueOf(prevDate) 
+					+ ", please check the data";
+					resultMap.put("error",message );
+					return priceList;
+				}
 				prevDate = tradeDate;
 				if(index < 1) {
 					firstPrice = rs2.getFloat("price");
@@ -283,6 +295,64 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 		}
 		return priceList;
 		
+	}
+
+	@Override
+	public Map<String, Object> getMovingAverageForSymbol(String symbol) {
+		Map<String, Object> resultMap = new HashMap<>();
+		String exchangeSelect = "Select * from exchange where symbol = ?";
+		String priceSelect = "Select * from price where symbol = ? order by tradeDate asc";
+		try {
+			PreparedStatement exchangeSelectStatement = coreComponent.getConnection().prepareStatement(exchangeSelect);
+			exchangeSelectStatement.setString(1, symbol);
+			ResultSet rs = exchangeSelectStatement.executeQuery();
+			if(!rs.next()) {
+				resultMap.put("error", "Symbol: " + symbol + " , not found ");
+				return resultMap;
+			}
+			String companyName = rs.getString("companyName");
+			PreparedStatement priceSelectStatement = coreComponent.getConnection().prepareStatement(priceSelect);
+			priceSelectStatement.setString(1, symbol);
+			ResultSet rs2 = priceSelectStatement.executeQuery();
+			List<StockMovingAverage> movingAverageList = new ArrayList<>();
+			Date prevDate = null;			
+			while(rs2.next()) {
+				Date tradeDate = rs2.getDate("tradeDate");
+				if(prevDate != null && tradeDate.equals(prevDate)) {
+					resultMap.put("error", "There are multiple price records for the date: " + String.valueOf(prevDate) + ", please check the data");
+					return resultMap;
+				}
+				prevDate = tradeDate;
+				StockMovingAverage stockMovingAverage = new StockMovingAverage();
+				stockMovingAverage.setCompanyName(companyName);
+				stockMovingAverage.setSymbol(symbol);
+				stockMovingAverage.setPrice(rs2.getFloat("price"));
+				stockMovingAverage.setTradeDate(tradeDate);
+				movingAverageList.add(stockMovingAverage);
+			}
+			if(movingAverageList.isEmpty()) {
+				resultMap.put("error", "No data found for Symbol : " + symbol);
+				return resultMap;
+			}
+			float fiftyDaySum = 0;
+			float twoHundredDaySum = 0;
+			for (int i = 0; i < movingAverageList.size(); i++) {
+				fiftyDaySum += movingAverageList.get(i).getPrice();
+				if(i >= 50) 
+					fiftyDaySum -= movingAverageList.get(i-50).getPrice();
+				float fiftyDayAverage = i >= 50 ? fiftyDaySum / 50 : i==0 ? fiftyDaySum : fiftyDaySum / i;
+				twoHundredDaySum += movingAverageList.get(i).getPrice();
+				if(i >= 200) 
+					twoHundredDaySum -= movingAverageList.get(i-200).getPrice();
+				float twoHundredDayAverage = i >= 200 ? twoHundredDaySum / 200 : i==0 ? twoHundredDaySum : twoHundredDaySum / i;
+				movingAverageList.get(i).setFiftyDayAverage(fiftyDayAverage);
+				movingAverageList.get(i).setTwoHundredDayAverage(twoHundredDayAverage);
+			}
+			resultMap.put("movingAverageDetail", movingAverageList);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return resultMap;
 	}
 		
 }
