@@ -54,8 +54,9 @@ public class StockAppBackendController {
 	}
 	
 	@GetMapping(value = "/getMovingAverageDetail/{symbol}")
-	ResponseEntity<Map> getMMovingAverageDetail(@PathVariable(name = "symbol",required = true) String symbol){
-		Map<String,Object> resultMap = stockAppBackendService.getMovingAverageForSymbol(symbol);
+	ResponseEntity<Map> getMMovingAverageDetail(@PathVariable(name = "symbol",required = true) String symbol,
+			@RequestParam(name = "years",required = true) int years){
+		Map<String,Object> resultMap = stockAppBackendService.getMovingAverageForSymbol(symbol,years);
 		return ResponseEntity.status(HttpStatus.OK).body(resultMap);
 	}
 	

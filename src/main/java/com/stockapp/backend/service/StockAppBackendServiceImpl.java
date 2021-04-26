@@ -298,10 +298,10 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 	}
 
 	@Override
-	public Map<String, Object> getMovingAverageForSymbol(String symbol) {
+	public Map<String, Object> getMovingAverageForSymbol(String symbol,int years) {
 		Map<String, Object> resultMap = new HashMap<>();
 		String exchangeSelect = "Select * from exchange where symbol = ?";
-		String priceSelect = "Select * from price where symbol = ? order by tradeDate asc";
+		String priceSelect = "Select * from price where symbol = ? order by tradeDate desc";
 		try {
 			PreparedStatement exchangeSelectStatement = coreComponent.getConnection().prepareStatement(exchangeSelect);
 			exchangeSelectStatement.setString(1, symbol);
@@ -315,8 +315,10 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 			priceSelectStatement.setString(1, symbol);
 			ResultSet rs2 = priceSelectStatement.executeQuery();
 			List<StockMovingAverage> movingAverageList = new ArrayList<>();
-			Date prevDate = null;			
-			while(rs2.next()) {
+			Date prevDate = null;		
+			int count = 0;			
+			while(rs2.next() && count < years*365) {
+				count++;
 				Date tradeDate = rs2.getDate("tradeDate");
 				if(prevDate != null && tradeDate.equals(prevDate)) {
 					resultMap.put("error", "There are multiple price records for the date: " + String.valueOf(prevDate) + ", please check the data");
@@ -334,6 +336,13 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 				resultMap.put("error", "No data found for Symbol : " + symbol);
 				return resultMap;
 			}
+			if(movingAverageList.size() < years*365) {
+				resultMap.put("error", "No data found for Symbol : " + symbol + " , for the last " + years + " years. Please select valid range");
+				return resultMap;
+			}
+			
+			movingAverageList.sort(Comparator.comparing(StockMovingAverage::getTradeDate));
+			System.out.println(movingAverageList.size());
 			float fiftyDaySum = 0;
 			float twoHundredDaySum = 0;
 			for (int i = 0; i < movingAverageList.size(); i++) {
