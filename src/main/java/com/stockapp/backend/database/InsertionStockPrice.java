@@ -29,7 +29,7 @@ public class InsertionStockPrice {
 	        	}
 	            String fileNameWithOutExt = FilenameUtils.removeExtension(f.getName());
 	            System.out.println(f);
-	            InsertionToData(f.getPath(),fileNameWithOutExt);
+	            InsertionToData(f.getPath(),fileNameWithOutExt);	            	
 	            fileCount++;
 	        }
 		
@@ -72,21 +72,22 @@ public class InsertionStockPrice {
                 statement.setFloat(5, low);
                 statement.setFloat(6, high);
                 statement.setDate(7,sqlDate );
-                statement.addBatch();
+//                statement.addBatch();
+                statement.execute();
                 count++;
                 
-                if (count == batchSize) {
-                	count = 0;
-                	batchNumber++;
-                	System.out.println("Batch number : " +batchNumber);
-                    statement.executeBatch();
-                    statement.clearBatch();
-                }
+//                if (count == batchSize) {
+//                	count = 0;
+//                	batchNumber++;
+//                	System.out.println("Batch number : " +batchNumber);
+//                    statement.executeBatch();
+//                    statement.clearBatch();
+//                }
             }
  
             lineReader.close();
-            statement.executeBatch();
-            statement.clearBatch();
+//            statement.executeBatch();
+//            statement.clearBatch();
             //conn.commit();
             conn.close();
 		    
@@ -106,10 +107,11 @@ public class InsertionStockPrice {
 		newDate = sdf.format(dtDob);
 		}else {
 			//.String start_dt = "2011-01-01";
-			DateFormat formatter = new SimpleDateFormat("yyyy-MM-DD"); 
-			Date dateOne = (Date)formatter.parse(date);
-			SimpleDateFormat newFormat = new SimpleDateFormat("yyyy-MM-dd");
-			 newDate = newFormat.format(dateOne);
+//			DateFormat formatter = new SimpleDateFormat("yyyy-MM-DD");
+//			Date dateOne = (Date)formatter.parse(date);
+//			SimpleDateFormat newFormat = new SimpleDateFormat("yyyy-MM-dd");
+//			 newDate = newFormat.format(dateOne);
+			newDate = date;
 		}
 		return newDate;
 	}
