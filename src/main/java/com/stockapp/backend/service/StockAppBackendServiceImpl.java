@@ -336,10 +336,10 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 				resultMap.put("error", "No data found for Symbol : " + symbol);
 				return resultMap;
 			}
-			if(movingAverageList.size() < years*365) {
-				resultMap.put("error", "No data found for Symbol : " + symbol + " , for the last " + years + " years. Please select valid range");
-				return resultMap;
-			}
+//			if(movingAverageList.size() < years*365) {
+//				resultMap.put("error", "No data found for Symbol : " + symbol + " , for the last " + years + " years. Please select valid range");
+//				return resultMap;
+//			}
 			
 			movingAverageList.sort(Comparator.comparing(StockMovingAverage::getTradeDate));
 			System.out.println(movingAverageList.size());
@@ -358,6 +358,57 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 				movingAverageList.get(i).setTwoHundredDayAverage(twoHundredDayAverage);
 			}
 			resultMap.put("movingAverageDetail", movingAverageList);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return resultMap;
+	}
+
+	@Override
+	public Map<String, Object> getFinancialDetailForSymbol(String symbol, String fromDate, String toDate) {
+		Map<String, Object> resultMap = new HashMap<>();
+		String exchangeSelect = "Select * from exchange where symbol = ?";
+		String priceSelect = "Select * from price where symbol = ? and tradeDate between ? and ? order by tradeDate asc";
+		try {
+			PreparedStatement exchangeSelectStatement = coreComponent.getConnection().prepareStatement(exchangeSelect);
+			exchangeSelectStatement.setString(1, symbol);
+			ResultSet rs = exchangeSelectStatement.executeQuery();
+			if(!rs.next()) {
+				resultMap.put("error", "Symbol: " + symbol + " , not found ");
+				return resultMap;
+			}
+			String companyName = rs.getString("companyName");
+			PreparedStatement priceSelectStatement = coreComponent.getConnection().prepareStatement(priceSelect);
+			priceSelectStatement.setString(1, symbol);
+			priceSelectStatement.setDate(2, Date.valueOf(fromDate));
+			priceSelectStatement.setDate(3, Date.valueOf(toDate));
+			ResultSet rs2 = priceSelectStatement.executeQuery();
+			List<Price> priceList = new ArrayList<>();
+			Date prevDate = null;		
+			while(rs2.next()) {
+				Date tradeDate = rs2.getDate("tradeDate");
+				if(prevDate != null && tradeDate.equals(prevDate)) {
+					resultMap.put("error", "There are multiple price records for the date: " + String.valueOf(prevDate) + ", please check the data");
+					return resultMap;
+				}					
+				prevDate = tradeDate;
+				Price price = new Price();
+				price.setCompanyName(companyName);
+				price.setSymbol(symbol);
+				price.setOpenPrice(rs2.getFloat("openPrice"));
+				price.setClosePrice(rs2.getFloat("price"));
+				price.setHighPrice(rs2.getFloat("highPrice"));
+				price.setLowPrice(rs2.getFloat("lowPrice"));
+				price.setVolume(rs2.getInt("volume"));
+				price.setTradeDate(tradeDate);
+				priceList.add(price);
+			}
+			if(priceList.isEmpty()) {
+				resultMap.put("error", "No data found for Symbol : " + symbol);
+				return resultMap;
+			}		
+			
+			resultMap.put("financialDetail", priceList);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}

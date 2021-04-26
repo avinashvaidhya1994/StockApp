@@ -15,5 +15,7 @@ public interface StockAppBackendService {
 	Map<String, Object> getComparisonForSymbols(String symbol1, String symbol2);
 
 	Map<String, Object> getMovingAverageForSymbol(String symbol,int years);
+
+	Map<String, Object> getFinancialDetailForSymbol(String symbol, String fromDate, String toDate);
 	
 }
