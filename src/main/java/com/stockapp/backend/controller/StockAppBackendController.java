@@ -68,4 +68,13 @@ public class StockAppBackendController {
 		return ResponseEntity.status(HttpStatus.OK).body(resultMap);
 	}
 	
+	@GetMapping(value = "/getMonthlyFinancialDetail/{symbol}")
+	ResponseEntity<Map> getMonthlyFinancialDetail(@PathVariable(name = "symbol",required = true) String symbol,
+			@RequestParam(name = "fromDate",required = true) String fromDate,
+			@RequestParam(name = "toDate",required = true) String toDate,
+			@RequestParam(name = "lotSize",required = true) int lotSize){
+		Map<String,Object> resultMap = stockAppBackendService.getMonthlyDetailForSymbol(symbol,fromDate,toDate,lotSize);
+		return ResponseEntity.status(HttpStatus.OK).body(resultMap);
+	}
+	
 }

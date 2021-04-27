@@ -17,6 +17,7 @@ import javax.swing.plaf.basic.BasicInternalFrameTitlePane.MoveAction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.stockapp.backend.entity.MonthlyReport;
 import com.stockapp.backend.entity.Price;
 import com.stockapp.backend.entity.StockMovingAverage;
 import com.stockapp.backend.entity.Summary;
@@ -415,6 +416,69 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 			}		
 			
 			resultMap.put("financialDetail", priceList);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return resultMap;
+	}
+
+	@Override
+	public Map<String, Object> getMonthlyDetailForSymbol(String symbol, String fromDate, String toDate, int lotSize) {
+		Map<String, Object> resultMap = new HashMap<>();
+		String exchangeSelect = "Select * from exchange where symbol = ?";
+		String priceSelect = "Select * from price where symbol = ? and tradeDate between ? and ? order by tradeDate asc";
+		try {
+			PreparedStatement exchangeSelectStatement = coreComponent.getConnection().prepareStatement(exchangeSelect);
+			exchangeSelectStatement.setString(1, symbol);
+			ResultSet rs = exchangeSelectStatement.executeQuery();
+			if(!rs.next()) {
+				resultMap.put("error", "Symbol: " + symbol + " , not found ");
+				return resultMap;
+			}
+			String companyName = rs.getString("companyName");
+			PreparedStatement priceSelectStatement = coreComponent.getConnection().prepareStatement(priceSelect);
+			priceSelectStatement.setString(1, symbol);
+			priceSelectStatement.setDate(2, Date.valueOf(fromDate));
+			priceSelectStatement.setDate(3, Date.valueOf(toDate));
+			ResultSet rs2 = priceSelectStatement.executeQuery();
+			List<MonthlyReport> monthlyReportList = new ArrayList<>();
+			Date prevDate = null;
+			float firstDayPrice = 0;
+			int month = 0;
+			MonthlyReport monthlyReport = null;
+			while(rs2.next()) {
+				Date tradeDate = rs2.getDate("tradeDate");
+				if(month != tradeDate.toLocalDate().getMonthValue()) {
+					month = tradeDate.toLocalDate().getMonthValue();
+					firstDayPrice = rs2.getFloat("price");
+					prevDate = tradeDate;
+					if(monthlyReport != null)
+						monthlyReportList.add(monthlyReport);
+					monthlyReport = new MonthlyReport();
+					continue;
+				}
+				if(prevDate != null && tradeDate.equals(prevDate)) {
+					resultMap.put("error", "There are multiple price records for the date: " + String.valueOf(prevDate) + ", please check the data");
+					return resultMap;
+				}					
+				prevDate = tradeDate;
+				float currentPrice = rs2.getFloat("price");
+				float glPerShare = currentPrice - firstDayPrice;
+				float glPercentage = (glPerShare/firstDayPrice) * 100;
+				monthlyReport.setSymbol(symbol);
+				monthlyReport.setCompanyName(companyName);
+				monthlyReport.setGlPercentage(glPercentage);
+				monthlyReport.setYear(tradeDate.toLocalDate().getYear());
+				monthlyReport.setMonth(month);
+				monthlyReport.setLotSize(lotSize);
+				monthlyReport.setGlPerShare(glPerShare);
+				monthlyReport.setGlPerLot(glPerShare*lotSize);
+			}
+			if(monthlyReportList.isEmpty()) {
+				resultMap.put("error", "No data found for Symbol : " + symbol);
+				return resultMap;
+			}
+			resultMap.put("monthlyReportDetail", monthlyReportList);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
