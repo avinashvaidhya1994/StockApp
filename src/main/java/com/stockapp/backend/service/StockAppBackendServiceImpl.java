@@ -12,6 +12,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import javax.swing.plaf.basic.BasicInternalFrameTitlePane.MoveAction;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -165,20 +167,20 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 			int index = 0;
 			List<Price> priceList = new ArrayList<>();
 			Date prevDate = null;
-			int prevYear = 0;
+			int firstMonth = 0;
 			while(rs2.next()) {
-				index++;
 				Date tradeDate = rs2.getDate("tradeDate");
 				int month = tradeDate.toLocalDate().getMonthValue();
-				int year = tradeDate.toLocalDate().getYear();
+				if(index == 0)
+					firstMonth = month;
+				index++;
 				if(prevDate != null && tradeDate.equals(prevDate)) {
 					resultMap.put("error", "There are multiple price records for the date: " + String.valueOf(prevDate) + ", please check the data");
 					return resultMap;
 				}					
 				prevDate = tradeDate;
-				if((index > 31 && month % 3 == 0 ) || (prevYear!= 0 && year != prevYear))
+				if(month != firstMonth && month % 3 == 0 )
 					break;
-				prevYear = year;
 				Price price = new Price();
 				price.setCompanyName(companyName);
 				price.setSymbol(symbol);
@@ -317,7 +319,7 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 			List<StockMovingAverage> movingAverageList = new ArrayList<>();
 			Date prevDate = null;		
 			int count = 0;			
-			while(rs2.next() && count < years*365) {
+			while(rs2.next() && count < ((years*365)+200)) {
 				count++;
 				Date tradeDate = rs2.getDate("tradeDate");
 				if(prevDate != null && tradeDate.equals(prevDate)) {
@@ -342,22 +344,26 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 //			}
 			
 			movingAverageList.sort(Comparator.comparing(StockMovingAverage::getTradeDate));
-			System.out.println(movingAverageList.size());
+//			System.out.println(movingAverageList.size());
+			int difference = movingAverageList.size() - (years*365);
 			float fiftyDaySum = 0;
 			float twoHundredDaySum = 0;
+			List<StockMovingAverage> resultList = new ArrayList<>();
 			for (int i = 0; i < movingAverageList.size(); i++) {
 				fiftyDaySum += movingAverageList.get(i).getPrice();
 				if(i >= 50) 
 					fiftyDaySum -= movingAverageList.get(i-50).getPrice();
-				float fiftyDayAverage = i >= 50 ? fiftyDaySum / 50 : i==0 ? fiftyDaySum : fiftyDaySum / i;
+				float fiftyDayAverage = i >= 50 ? fiftyDaySum / 50 : fiftyDaySum / (i+1);
 				twoHundredDaySum += movingAverageList.get(i).getPrice();
 				if(i >= 200) 
 					twoHundredDaySum -= movingAverageList.get(i-200).getPrice();
-				float twoHundredDayAverage = i >= 200 ? twoHundredDaySum / 200 : i==0 ? twoHundredDaySum : twoHundredDaySum / i;
+				float twoHundredDayAverage = i >= 200 ? twoHundredDaySum / 200 : twoHundredDaySum / (i+1);
 				movingAverageList.get(i).setFiftyDayAverage(fiftyDayAverage);
 				movingAverageList.get(i).setTwoHundredDayAverage(twoHundredDayAverage);
+				if(i > difference)
+					resultList.add(movingAverageList.get(i));
 			}
-			resultMap.put("movingAverageDetail", movingAverageList);
+			resultMap.put("movingAverageDetail", resultList);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
