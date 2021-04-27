@@ -478,6 +478,9 @@ public class StockAppBackendServiceImpl implements StockAppBackendService{
 				resultMap.put("error", "No data found for Symbol : " + symbol);
 				return resultMap;
 			}
+			if(!monthlyReportList.contains(monthlyReport) && monthlyReport.getCompanyName() != null 
+					&& !monthlyReport.getCompanyName().isEmpty() )
+					monthlyReportList.add(monthlyReport);
 			resultMap.put("monthlyReportDetail", monthlyReportList);
 		} catch (SQLException e) {
 			e.printStackTrace();
